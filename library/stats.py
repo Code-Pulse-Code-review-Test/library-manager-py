@@ -36,7 +36,8 @@ def book_status(lib, isbn, today=None):
         return "partly out"
 
 
-def import_books(lib, path):
+# calls add_row with the first three columns of each row after the header
+def _import_rows(path, add_row):
     count = 0
     errors = 0
     with open(path, newline="", encoding="utf-8") as f:
@@ -47,30 +48,18 @@ def import_books(lib, path):
                 errors += 1
                 continue
             try:
-                lib.add_book(row[0].strip(), row[1].strip(), row[2].strip())
+                add_row(row[0].strip(), row[1].strip(), row[2].strip())
                 count += 1
             except ValueError as e:
                 print("skipping row", row, e)
                 errors += 1
     print("imported", count, "rows,", errors, "errors")
     return count
+
+
+def import_books(lib, path):
+    return _import_rows(path, lib.add_book)
 
 
 def import_members(lib, path):
-    count = 0
-    errors = 0
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader, None)
-        for row in reader:
-            if len(row) < 3:
-                errors += 1
-                continue
-            try:
-                lib.add_member(row[0].strip(), row[1].strip(), row[2].strip())
-                count += 1
-            except ValueError as e:
-                print("skipping row", row, e)
-                errors += 1
-    print("imported", count, "rows,", errors, "errors")
-    return count
+    return _import_rows(path, lib.add_member)

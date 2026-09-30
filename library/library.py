@@ -70,25 +70,52 @@ class Library:
         text = text.lower()
         return [b for b in self.books.values() if text in b.title.lower() or text in b.author.lower()]
 
-    # TODO: save loans too, right now only books and members are kept
     def save(self, path):
         data = {
             "books": [vars(b) for b in self.books.values()],
             "members": [{"member_id": m.member_id, "name": m.name, "email": m.email} for m in self.members.values()],
+            "loans": [_loan_to_dict(loan) for loan in self.loans],
         }
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f)
 
     def load(self, path):
         if not os.path.exists(path):
             return
         try:
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-        except Exception:
+        except (OSError, json.JSONDecodeError):
             print("could not read", path)
             return
         for b in data["books"]:
             self.add_book(b["isbn"], b["title"], b["author"], b["copies"])
         for m in data["members"]:
             self.add_member(m["member_id"], m["name"], m["email"])
+        # files saved before loans were kept have no "loans" key
+        for loan_data in data.get("loans", []):
+            loan = _loan_from_dict(loan_data)
+            self.loans.append(loan)
+            if loan.returned_on is None:
+                self.members[loan.member_id].borrowed.append(loan.isbn)
+
+
+def _loan_to_dict(loan):
+    return {
+        "isbn": loan.isbn,
+        "member_id": loan.member_id,
+        "borrowed_on": loan.borrowed_on.isoformat(),
+        "due_on": loan.due_on.isoformat(),
+        "returned_on": loan.returned_on.isoformat() if loan.returned_on else None,
+    }
+
+
+def _loan_from_dict(data):
+    returned = data["returned_on"]
+    return Loan(
+        data["isbn"],
+        data["member_id"],
+        date.fromisoformat(data["borrowed_on"]),
+        date.fromisoformat(data["due_on"]),
+        date.fromisoformat(returned) if returned else None,
+    )
