@@ -25,3 +25,4 @@ class Loan:
     borrowed_on: date
     due_on: date
     returned_on: date = None
+    renewals: int = 0

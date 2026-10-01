@@ -6,6 +6,7 @@ from library.models import Book, Member, Loan
 
 LOAN_DAYS = 14
 MAX_BOOKS = 3
+MAX_RENEWALS = 2
 FINE_PER_DAY = 10
 
 
@@ -49,11 +50,26 @@ class Library:
 
     def return_book(self, isbn, member_id, today=None):
         today = today or date.today()
+        loan = self._open_loan(isbn, member_id)
+        loan.returned_on = today
+        self.members[member_id].borrowed.remove(isbn)
+        return self.fine(loan, today)
+
+    def renew(self, isbn, member_id, today=None):
+        today = today or date.today()
+        loan = self._open_loan(isbn, member_id)
+        if loan.due_on < today:
+            raise ValueError("overdue books cannot be renewed")
+        if loan.renewals >= MAX_RENEWALS:
+            raise ValueError("loan already renewed " + str(MAX_RENEWALS) + " times")
+        loan.due_on = loan.due_on + timedelta(days=LOAN_DAYS)
+        loan.renewals += 1
+        return loan
+
+    def _open_loan(self, isbn, member_id):
         for loan in self.loans:
             if loan.isbn == isbn and loan.member_id == member_id and loan.returned_on is None:
-                loan.returned_on = today
-                self.members[member_id].borrowed.remove(isbn)
-                return self.fine(loan, today)
+                return loan
         raise ValueError("loan not found")
 
     def fine(self, loan, today):
@@ -107,6 +123,7 @@ def _loan_to_dict(loan):
         "borrowed_on": loan.borrowed_on.isoformat(),
         "due_on": loan.due_on.isoformat(),
         "returned_on": loan.returned_on.isoformat() if loan.returned_on else None,
+        "renewals": loan.renewals,
     }
 
 
@@ -118,4 +135,5 @@ def _loan_from_dict(data):
         date.fromisoformat(data["borrowed_on"]),
         date.fromisoformat(data["due_on"]),
         date.fromisoformat(returned) if returned else None,
+        data.get("renewals", 0),
     )
