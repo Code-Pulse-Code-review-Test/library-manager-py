@@ -28,6 +28,22 @@ class LibraryTest(unittest.TestCase):
         fine = self.lib.return_book("1", "M1", start + timedelta(days=17))
         self.assertEqual(fine, 30)
 
+    def test_renew_pushes_due_date(self):
+        start = date(2026, 1, 1)
+        self.lib.lend("1", "M1", start)
+        loan = self.lib.renew("1", "M1", start + timedelta(days=10))
+        self.assertEqual(loan.due_on, date(2026, 1, 29))
+
+    def test_renew_limit_and_overdue(self):
+        start = date(2026, 1, 1)
+        self.lib.lend("1", "M1", start)
+        self.lib.renew("1", "M1", start)
+        self.lib.renew("1", "M1", start)
+        with self.assertRaises(ValueError):
+            self.lib.renew("1", "M1", start)
+        with self.assertRaises(ValueError):
+            self.lib.renew("1", "M1", date(2026, 3, 1))
+
 
 if __name__ == "__main__":
     unittest.main()

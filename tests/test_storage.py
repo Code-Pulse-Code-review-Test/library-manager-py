@@ -30,6 +30,11 @@ class SaveLoadTest(unittest.TestCase):
         self.assertEqual(loaded.members["M1"].borrowed, ["1"])
         self.assertEqual(loaded.loans[0].due_on, date(2026, 1, 15))
 
+    def test_renewals_are_kept(self):
+        self.lib.lend("1", "M1", date(2026, 1, 1))
+        self.lib.renew("1", "M1", date(2026, 1, 5))
+        self.assertEqual(self.reload().loans[0].renewals, 1)
+
     def test_returned_loans_are_kept(self):
         self.lib.lend("1", "M1", date(2026, 1, 1))
         self.lib.return_book("1", "M1", date(2026, 1, 20))
